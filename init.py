@@ -58,16 +58,33 @@ data_list, station_dict = organize_information()
 
 #----------------------------------------------------------- 
 #Setting and splitting the data
-x = tf.constant(data_list[:-1], dtype=D_TYPE)
-y = tf.constant(data_list[1:], dtype=D_TYPE)
-x = tf.expand_dims(x, axis = 0)
-y = tf.expand_dims(y, axis = 0)
+
+SIF = 7 #Steps into future
+SFP = 14 #Steps from past
+x_train = data_list[:int(len(data_list) * 0.80)]
+x_tmp = data_list[len(x_train):]
+x_eval = x_tmp[:int(len(x_tmp)* 0.5)]
+x_test = x_tmp[int(len(x_tmp)* 0.5):]
+
+index = list(range(0, len(x_train)-SIF-SFP-1))
+x_sample = []
+y_sample = []
+
+for i in index:
+  x_sample.append(x_train[i:i + SFP])
+  y_sample.append(x_train[i + SFP:i + SFP + SIF])
+
+x_sample= tf.constant(x_sample, dtype=D_TYPE)
+y_sample= tf.constant(y_sample, dtype=D_TYPE)
+
 tf.random.set_seed(SEED_NUMBER)
-x_max_value = tf.reduce_max(x, axis = 0, keepdims=False)
-print(x.device, y.device, x.shape, y.shape)
-xhat = tf.random.uniform(shape=x.shape, seed= SEED_NUMBER, minval=0, dtype= D_TYPE, maxval=x_max_value*1.5) 
-x_train, x_temp, y_train, y_temp = train_test_split(x,y, test_size=0.4, random_state=RANDOM_STATE)
-x_eval, x_test, y_eval, y_test = train_test_split(x_temp, y_temp, test_size= 0.5, random_state= RANDOM_STATE)
+rainfall_mean= np.sum(x_train, axis = 0) / len(x_train)
+rainfall_stddiv= (1/len(x_train)*np.sum(np.square(x_train - rainfall_mean), axis = 0))
+
+xhat = tf.random.normal(shape=x_sample.shape, seed= SEED_NUMBER, mean=rainfall_mean, dtype= D_TYPE, stddev= rainfall_stddiv) 
+
+ 
+
 #I found the data have so many variance that I prefer to make a prediction with a little more sense and the error be higher than output values that doesnt even add up... 
 #that's why i put  maxval=x_max_value * 1.5
 #-------------------------------------------
