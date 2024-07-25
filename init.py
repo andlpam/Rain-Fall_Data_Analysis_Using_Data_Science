@@ -61,28 +61,30 @@ data_list, station_dict = organize_information()
 
 SIF = 7 #Steps into future
 SFP = 14 #Steps from past
-x_train = data_list[:int(len(data_list) * 0.80)]
-x_tmp = data_list[len(x_train):]
-x_eval = x_tmp[:int(len(x_tmp)* 0.5)]
-x_test = x_tmp[int(len(x_tmp)* 0.5):]
-
-index = list(range(0, len(x_train)-SIF-SFP-1))
-x_sample = []
-y_sample = []
-
-for i in index:
-  x_sample.append(x_train[i:i + SFP])
-  y_sample.append(x_train[i + SFP:i + SFP + SIF])
-
-x_sample= tf.constant(x_sample, dtype=D_TYPE)
-y_sample= tf.constant(y_sample, dtype=D_TYPE)
-
 tf.random.set_seed(SEED_NUMBER)
-rainfall_mean= np.sum(x_train, axis = 0) / len(x_train)
-rainfall_stddiv= (1/len(x_train)*np.sum(np.square(x_train - rainfall_mean), axis = 0))
+def initializing_data_for_train(SIF, SFP, data):
+    x_train = data[:int(len(data) * 0.80)]
+    x_tmp = data[len(x_train):]
+    x_eval = x_tmp[:int(len(x_tmp)* 0.5)]
+    x_test = x_tmp[int(len(x_tmp)* 0.5):]
 
-xhat = tf.random.normal(shape=x_sample.shape, seed= SEED_NUMBER, mean=rainfall_mean, dtype= D_TYPE, stddev= rainfall_stddiv) 
+    index = list(range(0, len(x_train)-SIF-SFP-1))
+    x_sample = []
+    y_sample = []
 
+    for i in index:
+        x_sample.append(x_train[i:i + SFP])
+        y_sample.append(x_train[i + SFP:i + SFP + SIF])
+
+    x_sample= tf.constant(x_sample, dtype=D_TYPE)
+    y_sample= tf.constant(y_sample, dtype=D_TYPE)
+
+    rainfall_mean= np.sum(x_train, axis = 0) / len(x_train)
+    rainfall_stddiv= (1/len(x_train)*np.sum(np.square(x_train - rainfall_mean), axis = 0))
+
+    xhat = tf.random.normal(shape=x_sample.shape, seed= SEED_NUMBER, mean=rainfall_mean, dtype= D_TYPE, stddev= rainfall_stddiv) 
+    return x_sample, y_sample, xhat
+x,y,xhat = initializing_data_for_train(SIF,SFP, data_list)
  
 
 #I found the data have so many variance that I prefer to make a prediction with a little more sense and the error be higher than output values that doesnt even add up... 
@@ -90,41 +92,40 @@ xhat = tf.random.normal(shape=x_sample.shape, seed= SEED_NUMBER, mean=rainfall_m
 #-------------------------------------------
 #Plot the inputs
 
-def yyyymmdd_parser(s):
-    return datetime.datetime.strptime(s, '%Y-%m-%d')
+# Function to convert tensor to pandas DataFrame
+def plot_data(x_sample, xhat, y_sample, yhat):
+    def get_data(tensor):
+        tensor = tensor.numpy()
+        flattened_tensor = tensor.reshape(-1, tensor.shape[-1])
+        df = pd.DataFrame(flattened_tensor, columns=['Date/Time', 'Total Precip (mm)'])
+        df['Date/Time'] = pd.to_datetime(df['Date/Time'], unit='s')
+        return df
 
-def get_data(tensor):
-    
-    df = pd.DataFrame(tensor.numpy(), columns=['Date/Time', 'Total Precip (mm)'])
-    df['Date/Time'] = pd.to_datetime(df['Date/Time'], format='%Y-%m-%d')
-    
-    return df
-#First graph data
-weather1 = get_data(x_train)
-rainfall1 = weather1['Total Precip (mm)'].to_list()
-date1 = [x.to_pydatetime() for x in weather1['Date/Time']]
+    # Convert tensors to DataFrames
+    weather1 = get_data(x_sample)
+    rainfall1 = weather1['Total Precip (mm)'].to_list()
+    date1 = [x.to_pydatetime() for x in weather1['Date/Time']]
 
-#Second graph data
-weather2 = get_data(xhat)
-rainfall2 = weather2['Total Precip (mm)'].to_list()
-date2 = [x.to_pydatetime() for x in weather2['Date/Time']]
+    weather2 = get_data(xhat)
+    rainfall2 = weather2['Total Precip (mm)'].to_list()
+    date2 = [x.to_pydatetime() for x in weather2['Date/Time']]
 
-# Plot first graph 
-fig1 = plt.figure(figsize=(10.0, 7.0))
-ax1 = fig1.add_axes([0,0,1,1])
-ax1.plot(date1, rainfall1)
-ax1.set_xlabel('date')
-ax1.set_ylabel('precipitation (mm)')
-ax1.set_title('Bangladesh rainfall training data')
-fig1.savefig('daily-precipitation-dataset1.png', bbox_inches='tight')
+    # Plot first graph 
+    fig1 = plt.figure(figsize=(10.0, 7.0))
+    ax1 = fig1.add_axes([0,0,1,1])
+    ax1.plot(date1, rainfall1)
+    ax1.set_xlabel('date')
+    ax1.set_ylabel('precipitation (mm)')
+    ax1.set_title('Bangladesh rainfall x_sample')
+    fig1.savefig('bangladesh-rainfall-x_sample.png', bbox_inches='tight')
 
-# PLot second graph
-fig2 = plt.figure(figsize=(10.0, 7.0))
-ax2 = fig2.add_axes([0,0,1,1])
-ax2.plot(date2, rainfall2)
-ax2.set_xlabel('date')
-ax2.set_ylabel('precipitation (mm)')
-ax2.set_title('Bangladesh rainfall real data')
-fig2.savefig('daily-precipitation-dataset2.png', bbox_inches='tight')
+    # Plot second graph
+    fig2 = plt.figure(figsize=(10.0, 7.0))
+    ax2 = fig2.add_axes([0,0,1,1])
+    ax2.plot(date2, rainfall2)
+    ax2.set_xlabel('date')
+    ax2.set_ylabel('precipitation (mm)')
+    ax2.set_title('Bangladesh rainfall xhat')
+    fig2.savefig('bangladesh-rainfall-xhat.png', bbox_inches='tight')
 
-plt.show()
+    plt.show()
