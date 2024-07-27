@@ -2,8 +2,6 @@
 #Libraries
 #------------------------------------------
 import os 
-import datetime
-import re
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import tensorflow as tf
 import pandas as pd
@@ -63,28 +61,35 @@ SIF = 7 #Steps into future
 SFP = 14 #Steps from past
 tf.random.set_seed(SEED_NUMBER)
 def initializing_data_for_train(SIF, SFP, data):
-    x_train = data[:int(len(data) * 0.80)]
-    x_tmp = data[len(x_train):]
-    x_eval = x_tmp[:int(len(x_tmp)* 0.5)]
-    x_test = x_tmp[int(len(x_tmp)* 0.5):]
-
-    index = list(range(0, len(x_train)-SIF-SFP-1))
+    
+    index = list(range(0, len(data)-SIF-SFP-1))
     x_sample = []
     y_sample = []
 
     for i in index:
-        x_sample.append(x_train[i:i + SFP])
-        y_sample.append(x_train[i + SFP:i + SFP + SIF])
+        x_sample.append(data[i:i + SFP])
+        y_sample.append(data[i + SFP:i + SFP + SIF])
 
-    x_sample= tf.constant(x_sample, dtype=D_TYPE)
-    y_sample= tf.constant(y_sample, dtype=D_TYPE)
+    x_train = tf.constant(x_sample[:int(len(x_sample) * 0.80)], dtype=D_TYPE)
+    x_tmp = tf.constant(x_sample[len(x_sample):], dtype = D_TYPE)
+    x_eval = tf.constant(x_tmp[:int(len(x_tmp)* 0.5)], dtype = D_TYPE)
+    x_test = tf.constant(x_tmp[int(len(x_tmp)* 0.5):], dtype=D_TYPE)
 
-    rainfall_mean= np.sum(x_train, axis = 0) / len(x_train)
-    rainfall_stddiv= (1/len(x_train)*np.sum(np.square(x_train - rainfall_mean), axis = 0))
+    y_train = tf.constant(y_sample[:int(len(y_sample) * 0.80)], dtype=D_TYPE)
+    y_tmp = tf.constant(y_sample[len(y_sample):], dtype = D_TYPE)
+    y_eval = tf.constant(y_tmp[:int(len(y_tmp)* 0.5)], dtype = D_TYPE)
+    y_test = tf.constant(y_tmp[int(len(y_tmp)* 0.5):], dtype=D_TYPE)
 
-    xhat = tf.random.normal(shape=x_sample.shape, seed= SEED_NUMBER, mean=rainfall_mean, dtype= D_TYPE, stddev= rainfall_stddiv) 
-    return x_sample, y_sample, xhat
-x,y,xhat = initializing_data_for_train(SIF,SFP, data_list)
+
+    rainfall_mean_x= np.sum(x_sample, axis = 0) / len(x_sample)
+    rainfall_stddiv_x= (1/len(x_sample)*np.sum(np.square(x_sample - rainfall_mean_x), axis = 0))
+    rainfall_mean_y = np.sum(y_sample, axis = 0) / len(y_sample)
+    rainfall_stddiv_y = (1/len(y_sample)*np.sum(np.square(y_sample - rainfall_mean_y), axis = 0))
+
+    xhat = tf.random.normal(shape=x_train.shape, seed= SEED_NUMBER, mean=rainfall_mean_x, dtype= D_TYPE, stddev= rainfall_stddiv_x) 
+    yhat = tf.random.normal(shape=y_train.shape, seed= SEED_NUMBER, mean=rainfall_mean_y, dtype= D_TYPE, stddev= rainfall_stddiv_y)
+    return x_train, y_train, x_eval, y_eval, x_test, y_test, xhat, yhat
+x_train, y_train, x_eval, y_eval, x_test, y_test, xhat, yhat = initializing_data_for_train(SIF,SFP, data_list)
  
 
 #I found the data have so many variance that I prefer to make a prediction with a little more sense and the error be higher than output values that doesnt even add up... 
